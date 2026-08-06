@@ -1,7 +1,6 @@
 use std::{
-    cmp::{max, min},
+    cmp::max,
     io::{Error, ErrorKind::Other, Result, Write, stdout},
-    str::Bytes,
     thread::sleep,
     time::{Duration, Instant},
 };
@@ -20,6 +19,8 @@ const SLEEP_TIME: u64 = 10;
 
 const STDIO_MSG: &str = "Error handling stdio";
 
+const BOUNCE_BOOST: f32 = 1.1;
+
 pub struct Game {
     ball: Vector,
     ball_direction: Vector,
@@ -33,7 +34,7 @@ pub struct Game {
 }
 
 impl Game {
-    const DEFAULT_BALL_SPEED: f32 = 5.0 / 1000.0;
+    const DEFAULT_BALL_SPEED: f32 = 8.0 / 1000.0;
 
     pub fn new(w: usize, h: usize) -> Game {
         Game {
@@ -119,7 +120,34 @@ impl Game {
         self.ball = Vector {
             x: (self.screen_width / 2) as f32,
             y: (self.screen_height / 2) as f32,
+        };
+        self.ball_speed = Self::DEFAULT_BALL_SPEED * self.screen_width as f32;
+    }
+
+    fn check_colision(&mut self) -> Option<u8> {
+        let height: f32 = (self.screen_height) as f32;
+        let width: f32 = (self.screen_width) as f32;
+        if self.ball.y < 0.0 || self.ball.y > height {
+            self.ball_direction.flip_y();
+            self.ball.y = self.ball.y.clamp(0.0, (height - f32::MIN) as f32);
         }
+        if self.ball.x < 0.0 || self.ball.x > width as f32 {
+            self.ball.x = self.ball.x.clamp(0.0, (width - f32::MIN) as f32);
+            let goal_treshold = max(self.screen_height / 16, 1);
+            if self.ball.x == 0.0 {
+                if self.player_a.abs_diff(self.ball.y as i16) >= goal_treshold as u16 {
+                    return Some(0);
+                }
+            } else if self.player_b.abs_diff(self.ball.y as i16) >= goal_treshold as u16 {
+                return Some(1);
+            }
+
+            self.ball_direction.flip_x();
+
+            self.ball_speed *= BOUNCE_BOOST;
+            self.ball_speed = self.ball_speed.min(width as f32 / 16.0);
+        }
+        None
     }
 
     fn update(&mut self) -> Result<()> {
@@ -129,7 +157,7 @@ impl Game {
         self.ball = self.ball.add(self.ball_direction.mul(self.ball_speed));
         if let Some(g) = self.check_colision() {
             if g == 0 {
-                self.score_b += 1;
+                self.score_b += 1
             } else {
                 self.score_a += 1
             }
@@ -198,30 +226,6 @@ impl Game {
             }
             print!("\r\n");
         }
-    }
-
-    fn check_colision(&mut self) -> Option<u8> {
-        let height: f32 = (self.screen_height) as f32;
-        let width: f32 = (self.screen_width) as f32;
-        if self.ball.y < 0.0 || self.ball.y > height {
-            self.ball_direction.flip_y();
-            self.ball.y = self.ball.y.clamp(0.0, (height - f32::MIN) as f32);
-        }
-        if self.ball.x < 0.0 || self.ball.x > width as f32 {
-            self.ball_direction.flip_x();
-            self.ball.x = self.ball.x.clamp(0.0, (width - f32::MIN) as f32);
-            let goal_treshold = max(self.screen_height / 16, 1);
-            if self.ball.x == 0.0 {
-                if self.player_a.abs_diff(self.ball.y as i16) > goal_treshold as u16 {
-                    return Some(0);
-                }
-            } else {
-                if self.player_b.abs_diff(self.ball.y as i16) > goal_treshold as u16 {
-                    return Some(1);
-                }
-            }
-        }
-        None
     }
 }
 
