@@ -29,6 +29,6 @@ fn screen_height() -> u16 {
 
 fn main() {
     set_size();
-    let mut game: game::Game = game::Game::new(screen_width() as isize , screen_height() as isize);
+    let mut game: game::Game = game::Game::new(screen_width().into() , screen_height().into());
     game.start()
 }
