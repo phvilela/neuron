@@ -21,6 +21,8 @@ const STDIO_MSG: &str = "Error handling stdio";
 
 const BOUNCE_BOOST: f32 = 1.1;
 
+const DEFAULT_FINAL_SCORE: u8 = 5;
+
 pub struct Game {
     ball: Vector,
     ball_direction: Vector,
@@ -58,8 +60,17 @@ impl Game {
         enable_raw_mode().expect(STDIO_MSG);
         clear_screen().expect(STDIO_MSG);
         loop {
-            if let Err(_) = self.update() {
-                break;
+            match self.update() {
+                Ok(0) => {}
+                Ok(n) => {
+                    if n == 1 {
+                        println!("Player 1 wins {} x {}\r", self.score_a, self.score_b)
+                    } else if n == 2 {
+                        println!("Player 2 wins {} x {}\r", self.score_b, self.score_a)
+                    }
+                    break;
+                }
+                Err(_) => break,
             };
         }
         disable_raw_mode().expect("Error restoring stdio mode");
@@ -150,22 +161,28 @@ impl Game {
         None
     }
 
-    fn update(&mut self) -> Result<()> {
+    fn update(&mut self) -> Result<i8> {
         let moves = self.read_input()?;
 
         self.update_players(moves);
         self.ball = self.ball.add(self.ball_direction.mul(self.ball_speed));
         if let Some(g) = self.check_colision() {
             if g == 0 {
-                self.score_b += 1
+                self.score_b += 1;
+                if self.score_b == DEFAULT_FINAL_SCORE {
+                    return Ok(1);
+                }
             } else {
-                self.score_a += 1
+                self.score_a += 1;
+                if self.score_a == DEFAULT_FINAL_SCORE {
+                    return Ok(2);
+                }
             }
             self.reset_ball();
         }
         sleep(Duration::from_millis(SLEEP_TIME));
         self.render();
-        Ok(())
+        Ok(0)
     }
 
     fn render(&self) {
